@@ -1,0 +1,52 @@
+name: ScriptedSMP
+description: $description
+version: '${version}'
+
+main: org.monodev.scriptedSMP.ScriptedSMP
+api-version: '26.3'
+load: POSTWORLD
+
+authors: [ MonoDev ]
+
+softdepend:
+  - voicechat
+
+commands:
+  scriptedconfig:
+    description: "Lets you edit the configuration of the plugin."
+    usage: "/scriptedconfig <config> <true|false>"
+  scriptedspawnfakeplayer:
+    description: "Lets you spawn a fake player"
+    usage: "/scriptedconfig <name>"
+  scriptedremovefakeplayer:
+    description: "Lets you remove a fake player"
+    usage: "/scriptedconfig <name>"
+  scriptedkits:
+    description: "Opens the kit editor"
+    usage: "/scriptedkits"
+  scriptedgeneratenickname:
+    description: "Generates a nickname using a FIRST word and END word with manipulations on the 2 words."
+    usage: "/scriptedgeneratenickname"
+
+permissions:
+  scriptedsmp.config.edit:
+    description: "Allows the user to edit the configuration of this plugin."
+    default: op
+  scriptedsmp.config.bypass_block_place:
+    description: "Allows the user to place blocks regardless if block placing is disabled."
+    default: op
+  scriptedsmp.config.bypass_block_break:
+    description: "Allows the user to break blocks regardless if block breaking is disabled."
+    default: op
+  scriptedsmp.config.bypass_interact_block:
+    description: "Allows the user to interact with blocks regardless if block interaction is disabled."
+    default: op
+  scriptedsmp.config.ignore_death:
+    description: "Disables death processing for this user. Death sounds and permanent death will not function if the user has this permission."
+    default: op
+  scriptedsmp.config.bypass_voice_restrictions:
+    description: "Allows the user to bypass voice restrictions set in the plugin's configuration."
+    default: op
+  scriptedsmp.command.manage_fake_players:
+    description: "Allows the user to use /scriptedspawnfakeplayer and /scriptedremovefakeplayer"
+    default: op
