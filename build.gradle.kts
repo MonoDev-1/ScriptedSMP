@@ -16,6 +16,8 @@ dependencies {
 
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(25)
+    withJavadocJar()
+    withSourcesJar()
 }
 
 tasks {
@@ -33,4 +35,11 @@ tasks {
             expand(props)
         }
     }
+
+    javadoc {
+        (options as StandardJavadocDocletOptions).apply {
+            tags("apiNote:a:API Note:")
+        }
+    }
+
 }
