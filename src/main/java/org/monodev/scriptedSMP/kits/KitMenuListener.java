@@ -1,30 +1,26 @@
 package org.monodev.scriptedSMP.kits;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
-import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.AnvilInventory;
-import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.view.AnvilView;
 import org.monodev.scriptedSMP.ScriptedSMP;
 import org.monodev.scriptedSMP.api.ScriptedSMPApi;
 import org.monodev.scriptedSMP.api.events.kits.KitCreateEvent;
+import org.monodev.scriptedSMP.api.events.kits.KitDeleteEvent;
 import org.monodev.scriptedSMP.api.events.kits.KitGiveEvent;
 import org.monodev.scriptedSMP.api.events.kits.KitGivenEvent;
-
 import java.util.List;
-//TODO: add kit deletion
+
 public class KitMenuListener implements Listener {
     @EventHandler
     private void onInventoryClick(InventoryClickEvent event) {
@@ -43,9 +39,65 @@ public class KitMenuListener implements Listener {
                 default -> {
                     if (slot >= 0 && slot < 45) {
                         int kitIndex = (kitsMenu.getPage() - 1) * 45 + slot;
-                        handleKitClick((Player) event.getWhoClicked(), kitIndex);
+                        handleKitClick((Player) event.getWhoClicked(), kitIndex, event.isRightClick());
                     }
                 }
+            }
+        }
+    }
+
+    @EventHandler
+    public void onDeleteConfirmationClick(InventoryClickEvent event) {
+        if (!(event.getInventory().getHolder()
+                instanceof KitDeleteConfirmationMenu menu)) {
+            return;
+        }
+
+        event.setCancelled(true);
+
+        if (event.getClickedInventory() != event.getInventory()) {
+            return;
+        }
+
+        Player player = (Player) event.getWhoClicked();
+
+        switch (event.getSlot()) {
+            case 11 -> {
+                KitData kitData = menu.getKitData();
+
+                if (!kitExists(kitData.name())) {
+                    player.sendMessage("This kit no longer exists.");
+                    player.closeInventory();
+                    player.openInventory(new KitsMenu().getInventory());
+                    return;
+                }
+
+                ScriptedSMPApi api = ScriptedSMP.instance.getApi();
+
+                KitDeleteEvent deleteEvent =
+                        new KitDeleteEvent(api, kitData, player);
+
+                api.events().publish(deleteEvent);
+
+                if (deleteEvent.isCancelled()) {
+                    player.sendMessage(
+                            "Failed to delete kit. An external plugin cancelled this event."
+                    );
+                    player.closeInventory();
+                    return;
+                }
+
+                KitConfig.deleteKit(kitData.name());
+
+                player.sendMessage("Deleted kit: " + kitData.name());
+                player.closeInventory();
+
+                player.openInventory(new KitsMenu().getInventory());
+            }
+
+            case 15 -> {
+                player.closeInventory();
+                player.sendMessage("Kit deletion cancelled.");
             }
         }
     }
@@ -95,6 +147,7 @@ public class KitMenuListener implements Listener {
         if (kitCreateEvent.isCancelled()) {
             player.sendMessage("The creation of this kit was cancelled by an external plugin.");
             player.closeInventory();
+            return;
         }
 
         KitConfig.saveKit(newKit);
@@ -105,13 +158,21 @@ public class KitMenuListener implements Listener {
         player.openInventory(new KitsMenu().getInventory());
     }
 
-    private void handleKitClick(Player player, int kitIndex) {
+    private void handleKitClick(Player player, int kitIndex, boolean delete) {
         List<KitData> kitDataList = KitConfig.load();
         KitData[] kitDataArray = kitDataList.toArray(new KitData[0]);
 
         try {
             KitData kitData = kitDataArray[kitIndex];
             ScriptedSMPApi api = ScriptedSMP.instance.getApi();
+
+            if (delete) {
+                player.openInventory(
+                        new KitDeleteConfirmationMenu(kitData).getInventory()
+                );
+                return;
+            }
+
             KitGiveEvent giveEvent = new KitGiveEvent(api, kitData, player);
             api.events().publish(giveEvent);
             if (giveEvent.isCancelled()) {
@@ -126,7 +187,7 @@ public class KitMenuListener implements Listener {
             inventory.setItemInOffHand(kitData.offhand());
             player.getEnderChest().setStorageContents(kitData.enderchest());
             player.setTotalExperience(kitData.xp());
-            player.setHealth(kitData.hitpoints());
+            player.setHealth(Math.clamp(kitData.hitpoints(), 0, player.getAttribute(Attribute.MAX_HEALTH).getValue()));
             player.setFoodLevel(kitData.hunger());
 
             //TODO: Save saturation
@@ -135,7 +196,12 @@ public class KitMenuListener implements Listener {
             player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_TELEPORT, 1, 1);
             player.sendMessage("Equipped kit: " + kitData.name());
         } catch (Exception e) {
-            player.sendMessage("Failed to equip kit. Kit may have been deleted? Try refreshing");
+            player.sendMessage("Failed to equip kit.");
         }
+    }
+
+    private boolean kitExists(String kitName) {
+        return KitConfig.load().stream()
+                .anyMatch(kit -> kit.name().equalsIgnoreCase(kitName));
     }
 }

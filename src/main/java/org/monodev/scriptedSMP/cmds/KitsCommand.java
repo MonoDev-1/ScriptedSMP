@@ -17,6 +17,7 @@ public class KitsCommand implements CommandExecutor {
             return false;
         }
         player.openInventory(new KitsMenu().getInventory());
+        player.sendMessage("Right click a kit to delete it, Left click to equip a kit.");
         return true;
     }
 }
